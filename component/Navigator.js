@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import Translate from './translate/Translate'; // Your existing Translate component
 import UploadScreen from './document/UploadScreen';// New screen component
-import ScanScreen from './camera/ScanScreen';
+import TtsScreen from './TTS/TtsScreen';
 
 const Stack = createStackNavigator();
 
@@ -14,7 +14,7 @@ const Navigator = () => {
       <Stack.Navigator initialRouteName="Translate">
         <Stack.Screen name="Document Scanning And Beyond" component={Translate} />
         <Stack.Screen name="UploadScreen" component={UploadScreen} />
-        <Stack.Screen name="ScanScreen" component={ScanScreen} />
+        <Stack.Screen name="TtsScreen" component={TtsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

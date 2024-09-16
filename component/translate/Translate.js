@@ -1,13 +1,27 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image, Modal, FlatList } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ScrollView, Image, Modal, FlatList, ActivityIndicator } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-native-responsive-screen";
+import axios from 'axios';
+
+const translateText = async (text, fromLanguage, toLanguage) => {
+  try {
+    const response = await axios.post('http://192.168.1.10:5000/translate', {
+      text: text,
+      from: fromLanguage,
+      to: toLanguage,
+    });
+    return response.data.translation;
+  } catch (error) {
+    console.error('Error:', error);
+    return null;
+  }
+};
 
 const languageOptions = [
   { code: 'en', name: 'English (US)' },
-  { code: 'es', name: 'Spanish (Spain)' },
   { code: 'hi', name: 'Hindi' },
   { code: 'mr', name: 'Marathi' },
   { code: 'ta', name: 'Tamil' },
@@ -21,19 +35,30 @@ const Translate = () => {
   const [text2, setText2] = useState('');
   const [image, setImage] = useState(null);
   const [recording, setRecording] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [threeDotModalVisible, setThreeDotModalVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState({ language1: false, language2: false });
   const [selectedLanguage1, setSelectedLanguage1] = useState('en');
   const [selectedLanguage2, setSelectedLanguage2] = useState('es');
-  const [isFullscreen, setIsFullscreen] = useState(false); // Add state for fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [translationHeight, setTranslationHeight] = useState(100);
+  const [isLoading, setIsLoading] = useState(false); // New loading state
+
   const navigation = useNavigation();
 
-  const handleUploadNavigation = async () => {
+  const handleUploadNavigation = () => {
     navigation.navigate('UploadScreen');
   };
-
+  
   const handleScanNavigation = () => {
-    navigation.navigate('ScanScreen'); // Assuming you have a ScanScreen component
+    navigation.navigate('TtsScreen');
+  };
+
+  const handleTranslate = async () => {
+    setIsLoading(true); // Show loader
+    const translation = await translateText(text1, selectedLanguage1, selectedLanguage2);
+    if (translation) {
+      setText2(translation);
+    }
+    setIsLoading(false); // Hide loader
   };
 
   const startRecording = async () => {
@@ -61,35 +86,24 @@ const Translate = () => {
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      console.log('Recording stopped and stored at', uri);
       setRecording(null);
-      // You can process the recorded audio further if needed
+      console.log('Recording stopped and stored at', uri);
     } catch (error) {
       console.error('Failed to stop recording:', error);
     }
   };
 
+  const clearText = (setText) => {
+    setText('');
+  };
+
   const handleLanguageSelect = (language, type) => {
-    if (type === 'from') {
+    if (type === 'language1') {
       setSelectedLanguage1(language.code);
     } else {
       setSelectedLanguage2(language.code);
     }
-    setModalVisible(false);
-  };
-
-  const swapLanguages = () => {
-    const temp = selectedLanguage1;
-    setSelectedLanguage1(selectedLanguage2);
-    setSelectedLanguage2(temp);
-  };
-
-  const handleThreeDotClick = () => {
-    setThreeDotModalVisible(true);
-  };
-
-  const clearText = (setText) => {
-    setText('');
+    setModalVisible({ ...modalVisible, [type]: false });
   };
 
   const toggleFullscreen = () => {
@@ -104,7 +118,7 @@ const Translate = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>Translate</Text>
         <View style={[styles.translationBox, isFullscreen && styles.fullscreenBox]}>
-          <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <TouchableOpacity onPress={() => setModalVisible({ ...modalVisible, language1: true })}>
             <Text style={styles.languageText}>
               {languageOptions.find(lang => lang.code === selectedLanguage1)?.name || 'Select Language'}
             </Text>
@@ -116,6 +130,7 @@ const Translate = () => {
               placeholderTextColor="#808080"
               value={text1}
               onChangeText={setText1}
+              multiline={true}
             />
             {text1 ? (
               <TouchableOpacity onPress={() => clearText(setText1)}>
@@ -127,35 +142,45 @@ const Translate = () => {
               </TouchableOpacity>
             )}
           </View>
-          <View style={styles.swapContainer}>
-            <View style={styles.line} />
-            <TouchableOpacity onPress={swapLanguages}>
-              <Icon name="swap-vert" size={wp("8%")} color="#5beeee" style={styles.swapIcon} />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity onPress={() => setModalVisible(true)}>
+          <TouchableOpacity onPress={() => setModalVisible({ ...modalVisible, language2: true })}>
             <Text style={[styles.languageText, { color: '#5beeee' }]}>
               {languageOptions.find(lang => lang.code === selectedLanguage2)?.name || 'Select Language'}
             </Text>
           </TouchableOpacity>
-          <View style={styles.textInputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Translation appears here"
-              placeholderTextColor="#808080"
-              value={text2}
-              onChangeText={setText2}
-            />
-            {text2 ? (
-              <TouchableOpacity onPress={() => clearText(setText2)}>
-                <Icon name="close" size={wp("6%")} color="#5beeee" style={styles.clearIcon} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={recording ? stopRecording : startRecording}>
-                <Icon name="mic" size={wp("6%")} color="#5beeee" style={styles.microphoneIcon} />
-              </TouchableOpacity>
-            )}
-          </View>
+
+          {/* Loader will show here while translating */}
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#5beeee" style={styles.loader} />
+          ) : (
+            <View style={styles.textInputContainer}>
+              <TextInput
+                style={[styles.textInput, { height: translationHeight }]}
+                placeholder="Translation appears here"
+                placeholderTextColor="#808080"
+                value={text2}
+                onChangeText={setText2}
+                editable={false}
+                multiline={true}
+                scrollEnabled={true}
+                onContentSizeChange={(e) => setTranslationHeight(e.nativeEvent.contentSize.height)}
+              />
+              {text2 ? (
+                <TouchableOpacity onPress={() => clearText(setText2)}>
+                  <Icon name="close" size={wp("6%")} color="#5beeee" style={styles.clearIcon} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={recording ? stopRecording : startRecording}>
+                  <Icon name="mic" size={wp("6%")} color="#5beeee" style={styles.microphoneIcon} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          {/* Centered Translate Button */}
+          <TouchableOpacity onPress={handleTranslate} style={styles.translateButton}>
+            <Text style={styles.translateButtonText}>Translate</Text>
+          </TouchableOpacity>
+
           {image && <Image source={{ uri: image }} style={styles.image} />}
           <TouchableOpacity
             style={styles.fullscreenButton}
@@ -164,33 +189,30 @@ const Translate = () => {
             <Icon name={isFullscreen ? "fullscreen-exit" : "fullscreen"} size={wp("6%")} color="#ffffff" />
           </TouchableOpacity>
         </View>
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.footerButton} onPress={() => {}}>
-            <Icon name="translate" size={wp("8%")} color="#5beeee" />
-            <Text style={styles.footerButtonText}>Translation</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.footerButton} onPress={handleScanNavigation}>
-            <Icon name="camera-alt" size={wp("8%")} color="#5beeee" />
-            <Text style={styles.footerButtonText}>Scan</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.footerButton} onPress={handleUploadNavigation}>
-            <Icon name="upload-file" size={wp("8%")} color="#5beeee" />
-            <Text style={styles.footerButtonText}>Upload</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
-    
-      {/* Three Dot Icon */}
-      <TouchableOpacity style={styles.threeDotContainer} onPress={handleThreeDotClick}>
-        <Icon name="more-vert" size={wp("6%")} color="#ffffff" />
-      </TouchableOpacity>
 
-      {/* Modal for Language Selection */}
+      {/* Footer Fixed at the Bottom */}
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.footerButton} onPress={() => {}}>
+          <Icon name="translate" size={wp("8%")} color="#5beeee" />
+          <Text style={styles.footerButtonText}>Translation</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.footerButton} onPress={handleUploadNavigation}>
+          <Icon name="upload-file" size={wp("8%")} color="#5beeee" />
+          <Text style={styles.footerButtonText}>Upload</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.footerButton} onPress={handleScanNavigation}>
+          <Icon name="audiotrack" size={wp("8%")} color="#5beeee" />
+          <Text style={styles.footerButtonText}>TTS</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Modal for Language Selection for Language1 */}
       <Modal
-        visible={modalVisible}
-        transparent={true}
+        visible={modalVisible.language1}
         animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
+        transparent={true}
+        onRequestClose={() => setModalVisible({ ...modalVisible, language1: false })}
       >
         <View style={styles.modalContainer}>
           <FlatList
@@ -198,47 +220,47 @@ const Translate = () => {
             keyExtractor={(item) => item.code}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.modalOption}
-                onPress={() => handleLanguageSelect(item, selectedLanguage1 === 'en' ? 'from' : 'to')}
+                onPress={() => handleLanguageSelect(item, 'language1')}
+                style={styles.languageOption}
               >
-                <Text style={styles.modalOptionText}>{item.name}</Text>
+                <Text style={styles.languageOptionText}>{item.name}</Text>
               </TouchableOpacity>
             )}
           />
           <TouchableOpacity
+            onPress={() => setModalVisible({ ...modalVisible, language1: false })}
             style={styles.modalCloseButton}
-            onPress={() => setModalVisible(false)}
           >
-            <Text style={styles.modalCloseText}>Close</Text>
+            <Text style={styles.modalCloseButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       </Modal>
 
-      {/* Modal for Three Dot Icon */}
+      {/* Modal for Language Selection for Language2 */}
       <Modal
-        visible={threeDotModalVisible}
-        transparent={true}
+        visible={modalVisible.language2}
         animationType="slide"
-        onRequestClose={() => setThreeDotModalVisible(false)}
+        transparent={true}
+        onRequestClose={() => setModalVisible({ ...modalVisible, language2: false })}
       >
         <View style={styles.modalContainer}>
-          {['Marathi', 'Hindi', 'English'].map((language, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.modalOption}
-              onPress={() => {
-                // Handle language option click
-                setThreeDotModalVisible(false);
-              }}
-            >
-              <Text style={styles.modalOptionText}>{language}</Text>
-            </TouchableOpacity>
-          ))}
+          <FlatList
+            data={languageOptions}
+            keyExtractor={(item) => item.code}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() => handleLanguageSelect(item, 'language2')}
+                style={styles.languageOption}
+              >
+                <Text style={styles.languageOptionText}>{item.name}</Text>
+              </TouchableOpacity>
+            )}
+          />
           <TouchableOpacity
+            onPress={() => setModalVisible({ ...modalVisible, language2: false })}
             style={styles.modalCloseButton}
-            onPress={() => setThreeDotModalVisible(false)}
           >
-            <Text style={styles.modalCloseText}>Close</Text>
+            <Text style={styles.modalCloseButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -249,54 +271,51 @@ const Translate = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000", // Dark mode background
+    backgroundColor: '#121212',
   },
   scrollContainer: {
     flexGrow: 1,
-    alignItems: "center",
-    paddingTop: hp("5%"),
-    paddingBottom: hp("10%"),
+    paddingHorizontal: wp("4%"),
+    paddingTop: hp("2%"),
   },
   title: {
     fontSize: wp("8%"),
-    fontWeight: "bold",
-    color: "#fff", // White text color for dark mode
-    alignSelf: "flex-start",
-    marginLeft: wp("5%"),
+    color: '#ffffff',
+    marginBottom: hp("2%"),
   },
   translationBox: {
-    width: wp("90%"),
-    backgroundColor: "#1c1c1c", // Dark background for translation box
-    marginVertical: hp("3%"),
+    backgroundColor: '#1f1f1f',
     borderRadius: 10,
-    padding: wp("5%"),
+    padding: wp("4%"),
+    marginBottom: hp("2%"),
     position: 'relative',
   },
   fullscreenBox: {
-    width: '80%',
-    height: '80%',
-    marginVertical: 0,
-    borderRadius: 0,
-    marginTop: hp("3%"),
-    padding: wp("5%"),
-  },
-  languageText: {
-    color: "#fff", // White text color for dark mode
-    fontSize: wp("4%"),
-    marginBottom: hp("1%"),
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+    backgroundColor: '#1f1f1f',
   },
   textInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: hp("2%"),
+    marginBottom: hp("3%"),
+    backgroundColor: '#2c2c2c',
+    borderRadius: 10,
+    padding: wp("2%"),
   },
   textInput: {
     flex: 1,
-    height: hp("10%"),
-    paddingHorizontal: wp("2%"),
-    backgroundColor: "#1c1c1c", // Dark background for text input
-    color: "#fff", // White text color for dark mode
+    color: '#ffffff',
     fontSize: wp("4%"),
-    borderRadius: 5,
+    paddingHorizontal: wp("2%"),
+    paddingVertical: hp("3%"),
+    backgroundColor: '#2c2c2c',
+    borderRadius: 10,
   },
   clearIcon: {
     marginLeft: wp("2%"),
@@ -304,77 +323,84 @@ const styles = StyleSheet.create({
   microphoneIcon: {
     marginLeft: wp("2%"),
   },
-  swapIcon: {
-    alignSelf: "center",
-    marginVertical: hp("2%"),
-    marginBottom: hp("4%"),
+  languageText: {
+    color: '#ffffff',
+    fontSize: wp("5%"),
+  },
+  translateButton: {
+    backgroundColor: '#5beeee',
+    borderRadius: 10,
+    paddingVertical: hp("1.5%"),
+    paddingHorizontal: wp("4%"),
+    alignItems: 'center',
+    marginTop: hp("2%"),
+    marginBottom: hp("2%"),
+  },
+  translateButtonText: {
+    fontSize: wp("5%"),
+    color: '#ffffff',
   },
   image: {
-    width: "100%",
+    width: wp("90%"),
     height: hp("30%"),
-    marginVertical: hp("2%"),
     borderRadius: 10,
-  },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-    position: "absolute",
-    bottom: hp("2%"),
-    backgroundColor: "#000", // Dark background for footer
-    paddingVertical: hp("1%"),
-  },
-  footerButton: {
-    alignItems: "center",
-  },
-  footerButtonText: {
-    marginTop: hp("1%"),
-    fontSize: wp("3%"),
-    color: "#fff", // White text color for dark mode
-  },
-  threeDotContainer: {
-    position: "absolute",
-    top: hp("6%"),
-    right: wp("5%"),
-    padding: wp("2%"),
-  },
-  modalContainer: {
-    flex: 1,
-    paddingTop: hp("11%"),
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Dark semi-transparent background
-  },
-  modalOption: {
-    padding: wp("4%"),
-    backgroundColor: '#333',
-    borderRadius: 5,
-    marginTop: hp("0.5%"),
-    width: wp("80%"),
-    alignItems: "center",
-  },
-  modalOptionText: {
-    color: "#fff",
-    fontSize: wp("4%"),
-  },
-  modalCloseButton: {
-    padding: wp("3%"),
-    backgroundColor: '#007BFF',
-    borderRadius: 5,
-    marginTop: hp("3%"),
-    marginBottom: hp("20%"),
-  },
-  modalCloseText: {
-    color: "#fff",
-    fontSize: wp("4%"),
+    alignSelf: 'center',
+    marginBottom: hp("2%"),
   },
   fullscreenButton: {
     position: 'absolute',
-    bottom: hp("0%"),
-    right: hp("1.5%"),
-    backgroundColor: '#1c1c1c',
-    borderRadius: 50,
+    top: wp("2%"),
+    right: wp("2%"),
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#121212',
+    paddingVertical: hp("1%"),
+    borderTopWidth: 1,
+    borderTopColor: '#333333',
+  },
+  footerButton: {
+    alignItems: 'center',
+  },
+  footerButtonText: {
+    color: '#5beeee',
+    fontSize: wp("3%"),
+    marginTop: hp("0.5%"),
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: hp("12%"),
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  languageOption: {
+    marginTop: hp("1%"),
+    backgroundColor: '#2c2c2c',
+    borderRadius: 10,
+    padding: wp("3%"),
+    marginVertical: hp("1%"),
+    width: wp("80%"),
+    alignItems: 'center',
+  },
+  languageOptionText: {
+    color: '#ffffff',
+    fontSize: wp("5%"),
+  },
+  modalCloseButton: {
+    marginBottom: hp("5%"),
     padding: wp("2%"),
+    backgroundColor: '#5beeee',
+    borderRadius: 10,
+  },
+  modalCloseButtonText: {
+    color: '#ffffff',
+    fontSize: wp("5%"),
+  },
+  loader: {
+    marginTop: 20,
   },
 });
 
