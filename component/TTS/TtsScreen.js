@@ -14,14 +14,14 @@ const App = () => {
   const handleGenerateSpeech = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('http://192.168.1.10:5000/tts', {
+      const response = await axios.post('http://192.168.1.10:5001/tts', {
         text: text,
         speaker_wav: "C:/Users/SUMIT/OneDrive/Desktop/TTS/audio.wav",
         language: "en",
       });
 
       if (response.data.status === 'success') {
-        const audioUrl = `http://192.168.1.10:5000${response.data.audio_url}`;
+        const audioUrl = `http://192.168.1.10:5001${response.data.audio_url}`;
         setAudioUri(audioUrl);
         setError('');
         playAudio(audioUrl);

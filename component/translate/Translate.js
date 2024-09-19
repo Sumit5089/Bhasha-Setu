@@ -9,6 +9,7 @@ import axios from 'axios';
 const translateText = async (text, fromLanguage, toLanguage) => {
   try {
     const response = await axios.post('http://192.168.1.10:5000/translate', {
+
       text: text,
       from: fromLanguage,
       to: toLanguage,
@@ -21,13 +22,16 @@ const translateText = async (text, fromLanguage, toLanguage) => {
 };
 
 const languageOptions = [
-  { code: 'en', name: 'English (US)' },
+  { code: 'en', name: 'English' },
   { code: 'hi', name: 'Hindi' },
   { code: 'mr', name: 'Marathi' },
   { code: 'ta', name: 'Tamil' },
   { code: 'pa', name: 'Punjabi' },
   { code: 'gu', name: 'Gujarati' },
   { code: 'bn', name: 'Bengali' },
+  { code: 'kn', name: 'Kannada' },
+  { code: 'te', name: 'Telugu' },
+  { code: 'ml', name: 'Malayalam' },
 ];
 
 const Translate = () => {
@@ -37,7 +41,7 @@ const Translate = () => {
   const [recording, setRecording] = useState(null);
   const [modalVisible, setModalVisible] = useState({ language1: false, language2: false });
   const [selectedLanguage1, setSelectedLanguage1] = useState('en');
-  const [selectedLanguage2, setSelectedLanguage2] = useState('es');
+  const [selectedLanguage2, setSelectedLanguage2] = useState('hi');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [translationHeight, setTranslationHeight] = useState(100);
   const [isLoading, setIsLoading] = useState(false); // New loading state
@@ -49,17 +53,24 @@ const Translate = () => {
   };
   
   const handleScanNavigation = () => {
-    navigation.navigate('TtsScreen');
+    navigation.navigate('Text-To-Speech'); // Updated screen name
   };
 
   const handleTranslate = async () => {
     setIsLoading(true); // Show loader
-    const translation = await translateText(text1, selectedLanguage1, selectedLanguage2);
-    if (translation) {
-      setText2(translation);
+    try {
+      const translation = await translateText(text1, selectedLanguage1, selectedLanguage2);
+      if (translation) {
+        setText2(translation);
+      } else {
+        setText2("Translation failed or returned no result.");
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      setText2("An error occurred during translation.");
     }
     setIsLoading(false); // Hide loader
-  };
+  };;
 
   const startRecording = async () => {
     try {
