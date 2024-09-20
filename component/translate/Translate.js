@@ -123,15 +123,22 @@ const Translate = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <Text style={styles.title}>Translate</Text>
-        <View style={[styles.translationBox, isFullscreen && styles.fullscreenBox]}>
-          <TouchableOpacity onPress={() => setModalVisible({ ...modalVisible, language1: true })}>
+        <View
+          style={[styles.translationBox, isFullscreen && styles.fullscreenBox]}
+        >
+          <TouchableOpacity
+            onPress={() =>
+              setModalVisible({ ...modalVisible, language1: true })
+            }
+          >
             <Text style={styles.languageText}>
-              {languageOptions.find(lang => lang.code === selectedLanguage1)?.name || 'Select Language'}
+              {languageOptions.find((lang) => lang.code === selectedLanguage1)
+                ?.name || "Select Language"}
             </Text>
           </TouchableOpacity>
           <View style={styles.textInputContainer}>
@@ -145,27 +152,48 @@ const Translate = () => {
             />
             {text1 ? (
               <TouchableOpacity onPress={() => clearText(setText1)}>
-                <Icon name="close" size={wp("6%")} color="#ffffff" style={styles.clearIcon} />
+                <Icon
+                  name="close"
+                  size={wp("6%")}
+                  color="#ffffff"
+                  style={styles.clearIcon}
+                />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity onPress={recording ? stopRecording : startRecording}>
-                <Icon name="mic" size={wp("6%")} color="#ffffff" style={styles.microphoneIcon} />
+              <TouchableOpacity
+                onPress={recording ? stopRecording : startRecording}
+              >
+                <Icon
+                  name="mic"
+                  size={wp("6%")}
+                  color="#ffffff"
+                  style={styles.microphoneIcon}
+                />
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity onPress={() => setModalVisible({ ...modalVisible, language2: true })}>
-            <Text style={[styles.languageText, { color: '#5beeee' }]}>
-              {languageOptions.find(lang => lang.code === selectedLanguage2)?.name || 'Select Language'}
+          <TouchableOpacity
+            onPress={() =>
+              setModalVisible({ ...modalVisible, language2: true })
+            }
+          >
+            <Text style={[styles.languageText, { color: "#5beeee" }]}>
+              {languageOptions.find((lang) => lang.code === selectedLanguage2)
+                ?.name || "Select Language"}
             </Text>
           </TouchableOpacity>
 
           {/* Loader will show here while translating */}
           {isLoading ? (
-            <ActivityIndicator size="large" color="#5beeee" style={styles.loader} />
+            <ActivityIndicator
+              size="large"
+              color="#5beeee"
+              style={styles.loader}
+            />
           ) : (
             <View style={styles.textInputContainer}>
               <TextInput
-                style={[styles.textInput, { height: translationHeight }]}
+                style={[styles.textoutput, { height: translationHeight }]}
                 placeholder="Translation appears here"
                 placeholderTextColor="#808080"
                 value={text2}
@@ -173,22 +201,28 @@ const Translate = () => {
                 editable={false}
                 multiline={true}
                 scrollEnabled={true}
-                onContentSizeChange={(e) => setTranslationHeight(e.nativeEvent.contentSize.height)}
+                onContentSizeChange={(e) =>
+                  setTranslationHeight(e.nativeEvent.contentSize.height)
+                }
               />
               {text2 ? (
                 <TouchableOpacity onPress={() => clearText(setText2)}>
-                  <Icon name="close" size={wp("6%")} color="#5beeee" style={styles.clearIcon} />
+                  <Icon
+                    name="close"
+                    size={wp("6%")}
+                    color="#5beeee"
+                    style={styles.clearIcon}
+                  />
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={recording ? stopRecording : startRecording}>
-                  <Icon name="mic" size={wp("6%")} color="#5beeee" style={styles.microphoneIcon} />
-                </TouchableOpacity>
-              )}
+              ) : null}
             </View>
           )}
 
           {/* Centered Translate Button */}
-          <TouchableOpacity onPress={handleTranslate} style={styles.translateButton}>
+          <TouchableOpacity
+            onPress={handleTranslate}
+            style={styles.translateButton}
+          >
             <Text style={styles.translateButtonText}>Translate</Text>
           </TouchableOpacity>
 
@@ -197,7 +231,11 @@ const Translate = () => {
             style={styles.fullscreenButton}
             onPress={toggleFullscreen}
           >
-            <Icon name={isFullscreen ? "fullscreen-exit" : "fullscreen"} size={wp("6%")} color="#ffffff" />
+            <Icon
+              name={isFullscreen ? "fullscreen-exit" : "fullscreen"}
+              size={wp("6%")}
+              color="#ffffff"
+            />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -208,11 +246,17 @@ const Translate = () => {
           <Icon name="translate" size={wp("8%")} color="#5beeee" />
           <Text style={styles.footerButtonText}>Translation</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerButton} onPress={handleUploadNavigation}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={handleUploadNavigation}
+        >
           <Icon name="upload-file" size={wp("8%")} color="#5beeee" />
           <Text style={styles.footerButtonText}>Upload</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.footerButton} onPress={handleScanNavigation}>
+        <TouchableOpacity
+          style={styles.footerButton}
+          onPress={handleScanNavigation}
+        >
           <Icon name="audiotrack" size={wp("8%")} color="#5beeee" />
           <Text style={styles.footerButtonText}>TTS</Text>
         </TouchableOpacity>
@@ -223,7 +267,9 @@ const Translate = () => {
         visible={modalVisible.language1}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible({ ...modalVisible, language1: false })}
+        onRequestClose={() =>
+          setModalVisible({ ...modalVisible, language1: false })
+        }
       >
         <View style={styles.modalContainer}>
           <FlatList
@@ -231,7 +277,7 @@ const Translate = () => {
             keyExtractor={(item) => item.code}
             renderItem={({ item }) => (
               <TouchableOpacity
-                onPress={() => handleLanguageSelect(item, 'language1')}
+                onPress={() => handleLanguageSelect(item, "language1")}
                 style={styles.languageOption}
               >
                 <Text style={styles.languageOptionText}>{item.name}</Text>
@@ -239,7 +285,9 @@ const Translate = () => {
             )}
           />
           <TouchableOpacity
-            onPress={() => setModalVisible({ ...modalVisible, language1: false })}
+            onPress={() =>
+              setModalVisible({ ...modalVisible, language1: false })
+            }
             style={styles.modalCloseButton}
           >
             <Text style={styles.modalCloseButtonText}>Close</Text>
@@ -252,7 +300,9 @@ const Translate = () => {
         visible={modalVisible.language2}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setModalVisible({ ...modalVisible, language2: false })}
+        onRequestClose={() =>
+          setModalVisible({ ...modalVisible, language2: false })
+        }
       >
         <View style={styles.modalContainer}>
           <FlatList
@@ -260,7 +310,7 @@ const Translate = () => {
             keyExtractor={(item) => item.code}
             renderItem={({ item }) => (
               <TouchableOpacity
-                onPress={() => handleLanguageSelect(item, 'language2')}
+                onPress={() => handleLanguageSelect(item, "language2")}
                 style={styles.languageOption}
               >
                 <Text style={styles.languageOptionText}>{item.name}</Text>
@@ -268,7 +318,9 @@ const Translate = () => {
             )}
           />
           <TouchableOpacity
-            onPress={() => setModalVisible({ ...modalVisible, language2: false })}
+            onPress={() =>
+              setModalVisible({ ...modalVisible, language2: false })
+            }
             style={styles.modalCloseButton}
           >
             <Text style={styles.modalCloseButtonText}>Close</Text>
@@ -324,7 +376,16 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: wp("4%"),
     paddingHorizontal: wp("2%"),
-    paddingVertical: hp("3%"),
+    paddingVertical: hp("2%"),
+    backgroundColor: '#2c2c2c',
+    borderRadius: 10,
+  },
+  textoutput: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: wp("4%"),
+    paddingHorizontal: wp("2%"),
+    paddingVertical: hp("7%"),
     backgroundColor: '#2c2c2c',
     borderRadius: 10,
   },

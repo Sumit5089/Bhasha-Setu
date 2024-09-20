@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#1f1f1f',
   },
   title: {
     fontSize: 24,
@@ -220,12 +220,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     color: '#fff',
+    marginTop:60,
     marginBottom: 20,
   },
   languageOption: {
-    padding: 10,
+    padding: 20,
     backgroundColor: '#007BFF',
-    marginBottom: 10,
+    marginBottom: 15,
     borderRadius: 5,
   },
   languageText: {
