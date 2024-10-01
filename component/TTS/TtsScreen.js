@@ -16,7 +16,7 @@ const App = () => {
     try {
       const response = await axios.post('http://192.168.1.10:5001/tts', {
         text: text,
-        speaker_wav: "C:/Users/SUMIT/OneDrive/Desktop/TTS/audio.wav",
+        speaker_wav: "C:/Users/SUMIT/OneDrive/Desktop/TTS/newaudio.wav",
         language: "en",
       });
 

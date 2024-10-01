@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator, Modal, FlatList } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Picker } from '@react-native-picker/picker';
+import * as DocumentPicker from 'expo-document-picker';
 import axios from 'axios';
+import * as Print from 'react-native-print';  // Importing react-native-print for PDF creation
 
 const UploadScreen = () => {
   const [imageUri, setImageUri] = useState(null);
+  const [documentUri, setDocumentUri] = useState(null);
   const [extractedText, setExtractedText] = useState('');
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('hi'); // Default language to Hindi
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [translatedText, setTranslatedText] = useState('');
-  const [translationLoading, setTranslationLoading] = useState(false); // New state for translation loading
+  const [translationLoading, setTranslationLoading] = useState(false);
 
   const languages = [
     { code: 'en', name: 'English' },
@@ -49,10 +51,31 @@ const UploadScreen = () => {
     }
   };
 
+  const handleDocumentPick = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*', // Allows all document types
+      });
+  
+      console.log('Document Picker Result:', result); // Debugging line
+  
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const { uri } = result.assets[0];
+        setDocumentUri(uri); // Ensure this state variable exists
+        extractTextFromDocument(uri); // Call your function to extract text
+      } else {
+        Alert.alert('No document selected. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error picking document:', error);
+      Alert.alert('Error selecting document.');
+    }
+  };
+
   const extractTextFromImage = async (uri) => {
     setLoading(true);
     try {
-      const apiKey = 'K83589140488957'; // Replace with your API key
+      const apiKey = 'K83589140488957'; 
       const formData = new FormData();
       formData.append('apikey', apiKey);
       formData.append('file', {
@@ -85,12 +108,48 @@ const UploadScreen = () => {
     }
   };
 
+  const extractTextFromDocument = async (uri) => {
+    setLoading(true);
+    try {
+      const apiKey = 'K83589140488957'; // Replace with your API key
+      const formData = new FormData();
+      formData.append('apikey', apiKey);
+      formData.append('file', {
+        uri,
+        type: 'application/pdf',
+        name: 'document.pdf',
+      });
+
+      const response = await fetch('https://api.ocr.space/parse/image', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const result = await response.json();
+      if (result && result.ParsedResults && result.ParsedResults.length > 0) {
+        const extractedText = result.ParsedResults[0].ParsedText;
+        setExtractedText(extractedText);
+        translateText(extractedText);
+      } else {
+        Alert.alert('No text found in document.');
+      }
+    } catch (error) {
+      console.error('Error extracting text:', error);
+      Alert.alert('Error extracting text.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const translateText = async (text) => {
-    setTranslationLoading(true); // Start loader for translation
+    setTranslationLoading(true);
     try {
       const response = await axios.post('http://192.168.1.10:5000/translate', {
         text: text,
-        from: 'en', // Assuming OCR extracts text in English
+        from: 'en',
         to: selectedLanguage,
       });
       setTranslatedText(response.data.translation);
@@ -98,20 +157,48 @@ const UploadScreen = () => {
       console.error('Error translating text:', error);
       Alert.alert('Error translating text.');
     } finally {
-      setTranslationLoading(false); // Stop loader for translation
+      setTranslationLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const htmlContent = `
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            h1 { color: #1E90FF; }
+            p { font-size: 16px; }
+          </style>
+        </head>
+        <body>
+          <h1>Translated Text</h1>
+          <p>${translatedText}</p>
+        </body>
+        </html>
+      `;
+      await Print.printToFileAsync({
+        html: htmlContent,
+        fileName: 'TranslatedDocument.pdf',
+      });
+      Alert.alert('PDF created and ready to download');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      Alert.alert('Error creating PDF.');
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Upload Image</Text>
+      <Text style={styles.title}>Image and Document Translator</Text>
 
-      {/* Translate To Button */}
+      {/* Translate To Button with selected language */}
       <TouchableOpacity
         style={styles.translateButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.translateButtonText}>Translate To</Text>
+        <Text style={styles.translateButtonText}>Translate To: {languages.find(lang => lang.code === selectedLanguage)?.name}</Text>
       </TouchableOpacity>
 
       {/* Language Selection Modal */}
@@ -143,7 +230,12 @@ const UploadScreen = () => {
 
       {/* Upload Image Button */}
       <TouchableOpacity style={styles.uploadButton} onPress={handleImagePick}>
-        <Text style={styles.uploadButtonText}>Upload Here</Text>
+        <Text style={styles.uploadButtonText}>Upload Image</Text>
+      </TouchableOpacity>
+
+      {/* Upload Document Button */}
+      <TouchableOpacity style={styles.uploadButton} onPress={handleDocumentPick}>
+        <Text style={styles.uploadButtonText}>Upload Document</Text>
       </TouchableOpacity>
 
       {imageUri && (
@@ -159,6 +251,13 @@ const UploadScreen = () => {
           <Text style={styles.extractedText}>{translatedText}</Text>
         ) : null
       )}
+
+      {/* Download PDF Button */}
+      {translatedText && (
+        <TouchableOpacity style={styles.downloadButton} onPress={handleDownloadPDF}>
+          <Text style={styles.downloadButtonText}>Download as PDF</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -166,72 +265,83 @@ const UploadScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1f1f1f',
+    backgroundColor: '#000',
+    padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 20,
-  },
-  translateButton: {
-    backgroundColor: '#28A745',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 20,
-  },
-  translateButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    textAlign: 'center',
   },
   uploadButton: {
-    backgroundColor: '#007BFF',
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: '#1E90FF',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: 'center',
   },
   uploadButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  downloadButton: {
+    backgroundColor: '#32CD32',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: 'center',
+  },
+  downloadButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  translateButton: {
+    backgroundColor: '#FFA500',
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 10,
+    alignItems: 'center',
+  },
+  translateButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   image: {
     width: '100%',
-    height: 350,
-    marginTop: 20,
-    borderRadius: 10,
+    height: 200,
+    marginVertical: 10,
   },
   extractedText: {
     color: '#fff',
-    marginTop: 20,
     fontSize: 16,
-    paddingHorizontal: 10,
-    textAlign: 'center',
-  },
-  loader: {
-    marginTop: 20,
+    marginVertical: 20,
   },
   modalView: {
-    flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#fff',
+    marginTop: 100,
+    padding: 20,
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
   },
   modalTitle: {
-    fontSize: 24,
-    color: '#fff',
-    marginTop:60,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 10,
     marginBottom: 20,
   },
   languageOption: {
-    padding: 20,
-    backgroundColor: '#007BFF',
-    marginBottom: 15,
-    borderRadius: 5,
+    padding: 10,
   },
   languageText: {
-    color: '#fff',
-    fontSize: 18,
+    fontSize: 16,
+  },
+  loader: {
+    marginVertical: 20,
   },
 });
 
